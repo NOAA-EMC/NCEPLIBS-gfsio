@@ -597,7 +597,7 @@ contains
     real(gfsio_realkind),optional,intent(in)   :: Cpi(:)
     real(gfsio_realkind),optional,intent(in)   :: Ri(:)
 !local variables
-    real(gfsio_dblekind),allocatable :: slat(:),wlat(:)
+    real(gfsio_dblekind),allocatable :: slat(:)
     real(gfsio_realkind) :: radi
     integer(gfsio_intkind)      :: iskip,iwrite,nwrite,n
     type(gfsio_meta1)           :: meta1
@@ -715,13 +715,13 @@ contains
     if (gfile%latb.ne.size(gfile%glat1d)) then
        return
     else
-       allocate(slat(gfile%latb),wlat(gfile%latb))
-       call splat(gfile%idrt,gfile%latb,slat,wlat)
+       allocate(slat(gfile%latb))
+       call splat(gfile%idrt,gfile%latb,slat)
        radi=180.0 / (4.*atan(1.))
        do  n=1,gfile%latb
          gfile%glat1d(n) = asin(slat(n)) * radi
        enddo
-       deallocate(slat,wlat)
+       deallocate(slat)
     endif
 !glon
     if (gfile%lonb.ne.size(gfile%glon1d)) then
@@ -1849,8 +1849,8 @@ contains
     integer,intent(in):: idrt
     integer,optional,intent(in):: w34
     integer,intent(out):: igrid,kgds(200)
-    real(gfsio_dblekind) :: slat8(gfile%latb),wlat8(gfile%latb)
-    real(gfsio_intkind) :: slat4(gfile%latb),wlat4(gfile%latb)
+    real(gfsio_dblekind) :: slat8(gfile%latb)
+    real(gfsio_intkind) :: slat4(gfile%latb)
     integer :: n
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     iret=-5
@@ -1873,10 +1873,10 @@ contains
 ! call different split for w3_4 lib and w3_d lib
 !------------------------------------------------------------
       if (present (w34)) then
-        call splat(idrt,gfile%latb,slat4,wlat4)
+        call splat(idrt,gfile%latb,slat4)
         kgds(4)=nint(180000./acos(-1.)*asin(slat4(1)))
       else
-        call splat(idrt,gfile%latb,slat8,wlat8)
+        call splat(idrt,gfile%latb,slat8)
         kgds(4)=nint(180000./acos(-1.)*asin(slat8(1)))
       endif
     case(256)
@@ -2424,11 +2424,11 @@ contains
      endif
     end subroutine gfsio_clslu
 !----------------------------------------------------------------------
-      SUBROUTINE gfsio_splat4(IDRT,JMAX,ASLAT,WLAT)
+      SUBROUTINE gfsio_splat4(IDRT,JMAX,ASLAT)
 !$$$
       implicit none
       integer(gfsio_intkind),intent(in) :: idrt,jmax
-      real(4),intent(out) :: ASLAT(JMAX),WLAT(JMAX)
+      real(4),intent(out) :: ASLAT(JMAX)
       INTEGER(gfsio_intkind),PARAMETER:: KD=SELECTED_REAL_KIND(15,45)
       REAL(KIND=KD):: PK(JMAX/2),PKM1(JMAX/2),PKM2(JMAX/2)
       REAL(KIND=KD):: ASLATD(JMAX/2),SP,SPMAX,EPS=10.*EPSILON(SP)
@@ -2448,11 +2448,9 @@ contains
       134.304016638, 137.445588020, 140.587160352, 143.728733573, &
       146.870307625, 150.011882457, 153.153458019, 156.295034268 /
       REAL(8):: DLT,D1=1.
-      REAL(8) AWORK((JMAX+1)/2,((JMAX+1)/2)),BWORK(((JMAX+1)/2))
       INTEGER(4):: JHE,JHO,J0=0
-      INTEGER(4) IPVT((JMAX+1)/2)
       real,PARAMETER :: PI=3.14159265358979,C=(1.-(2./PI)**2)*0.25
-      real r,pkml
+      real r
       integer jh,js,n,j
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  GAUSSIAN LATITUDES
@@ -2490,16 +2488,10 @@ contains
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(J)=ASLATD(J)
-          WLAT(J)=(2.*(1.-ASLATD(J)**2))/(JMAX*PKM1(J))**2
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
           ASLAT(JHE)=0.
-          WLAT(JHE)=2./JMAX**2
-          DO N=2,JMAX,2
-            WLAT(JHE)=WLAT(JHE)*N**2/(N-1)**2
-          ENDDO
         ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  EQUALLY-SPACED LATITUDES INCLUDING POLES
@@ -2512,28 +2504,12 @@ contains
         DO J=2,JH
           ASLAT(J)=COS((J-1)*DLT)
         ENDDO
-        DO JS=1,JHO
-          DO J=1,JHO
-            AWORK(JS,J)=COS(2*(JS-1)*J*DLT)
-          ENDDO
-        ENDDO
-        DO JS=1,JHO
-          BWORK(JS)=-D1/(4*(JS-1)**2-1)
-        ENDDO
-        CALL DGEF(AWORK,JHE,JHO,IPVT)
-        CALL DGES(AWORK,JHE,JHO,IPVT,BWORK,J0)
-        WLAT(1)=0.
-        DO J=1,JHO
-          WLAT(J+1)=BWORK(J)
-        ENDDO
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
           ASLAT(JHE)=0.
-          WLAT(JHE)=2.*WLAT(JHE)
         ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  EQUALLY-SPACED LATITUDES EXCLUDING POLES
@@ -2546,38 +2522,22 @@ contains
         DO J=1,JH
           ASLAT(J)=COS((J-0.5)*DLT)
         ENDDO
-        DO JS=1,JHO
-          DO J=1,JHO
-            AWORK(JS,J)=COS(2*(JS-1)*(J-0.5)*DLT)
-          ENDDO
-        ENDDO
-        DO JS=1,JHO
-          BWORK(JS)=-D1/(4*(JS-1)**2-1)
-        ENDDO
-        CALL DGEF(AWORK,JHE,JHO,IPVT)
-        CALL DGES(AWORK,JHE,JHO,IPVT,BWORK,J0)
-        WLAT(1)=0.
-        DO J=1,JHO
-          WLAT(J)=BWORK(J)
-        ENDDO
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
           ASLAT(JHE)=0.
-          WLAT(JHE)=2.*WLAT(JHE)
         ENDIF
       ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
      end subroutine gfsio_splat4
 !----------------------------------------------------------------------
-      SUBROUTINE gfsio_splat8(IDRT,JMAX,ASLAT,WLAT)
+      SUBROUTINE gfsio_splat8(IDRT,JMAX,ASLAT)
 !$$$
       implicit none
       integer(gfsio_intkind),intent(in) :: idrt,jmax
-      real(gfsio_dblekind),intent(out) :: ASLAT(JMAX),WLAT(JMAX)
+      real(gfsio_dblekind),intent(out) :: ASLAT(JMAX)
       INTEGER(gfsio_intkind),PARAMETER:: KD=SELECTED_REAL_KIND(15,45)
       REAL(KIND=KD):: PK(JMAX/2),PKM1(JMAX/2),PKM2(JMAX/2)
       REAL(KIND=KD):: ASLATD(JMAX/2),SP,SPMAX,EPS=10.*EPSILON(SP)
@@ -2597,29 +2557,27 @@ contains
       134.304016638, 137.445588020, 140.587160352, 143.728733573, &
       146.870307625, 150.011882457, 153.153458019, 156.295034268 /
       REAL(8):: DLT,D1=1.
-      REAL(8) AWORK((JMAX+1)/2,((JMAX+1)/2)),BWORK(((JMAX+1)/2))
       INTEGER(4):: JHE,JHO,J0=0
-      INTEGER(4) IPVT((JMAX+1)/2)
       real(gfsio_dblekind),PARAMETER :: PI=3.14159265358979,C=(1.-(2./PI)**2)*0.25
-      real(gfsio_dblekind) r,splatd,pkml
+      real(gfsio_dblekind) r
       integer jh,js,n,j
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  GAUSSIAN LATITUDES
       IF(IDRT.EQ.4) THEN
         JH=JMAX/2
         JHE=(JMAX+1)/2
-        R=1./SQRT((JMAX+0.5)**2+C)
+        R=1.d0/SQRT((JMAX+0.5d0)**2+C)
         DO J=1,MIN(JH,JZ)
           ASLATD(J)=COS(BZ(J)*R)
         ENDDO
         DO J=JZ+1,JH
           ASLATD(J)=COS((BZ(JZ)+(J-JZ)*PI)*R)
         ENDDO
-        SPMAX=1.
+        SPMAX=1.d0
         DO WHILE(SPMAX.GT.EPS)
-          SPMAX=0.
+          SPMAX=0.d0
           DO J=1,JH
-            PKM1(J)=1.
+            PKM1(J)=1.d0
             PK(J)=ASLATD(J)
           ENDDO
           DO N=2,JMAX
@@ -2630,7 +2588,7 @@ contains
             ENDDO
           ENDDO
           DO J=1,JH
-            SP=PK(J)*(1.-ASLATD(J)**2)/(JMAX*(PKM1(J)-ASLATD(J)*PK(J)))
+            SP=PK(J)*(1.d0-ASLATD(J)**2)/(JMAX*(PKM1(J)-ASLATD(J)*PK(J)))
             ASLATD(J)=ASLATD(J)-SP
             SPMAX=MAX(SPMAX,ABS(SP))
           ENDDO
@@ -2638,16 +2596,10 @@ contains
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(J)=ASLATD(J)
-          WLAT(J)=(2.*(1.-ASLATD(J)**2))/(JMAX*PKM1(J))**2
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
-          ASLAT(JHE)=0.
-          WLAT(JHE)=2./JMAX**2
-          DO N=2,JMAX,2
-            WLAT(JHE)=WLAT(JHE)*N**2/(N-1)**2
-          ENDDO
+          ASLAT(JHE)=0.d0
         ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  EQUALLY-SPACED LATITUDES INCLUDING POLES
@@ -2656,32 +2608,16 @@ contains
         JHE=(JMAX+1)/2
         JHO=JHE-1
         DLT=PI/(JMAX-1)
-        ASLAT(1)=1.
+        ASLAT(1)=1.d0
         DO J=2,JH
           ASLAT(J)=COS((J-1)*DLT)
-        ENDDO
-        DO JS=1,JHO
-          DO J=1,JHO
-            AWORK(JS,J)=COS(2*(JS-1)*J*DLT)
-          ENDDO
-        ENDDO
-        DO JS=1,JHO
-          BWORK(JS)=-D1/(4*(JS-1)**2-1)
-        ENDDO
-        CALL DGEF(AWORK,JHE,JHO,IPVT)
-        CALL DGES(AWORK,JHE,JHO,IPVT,BWORK,J0)
-        WLAT(1)=0.
-        DO J=1,JHO
-          WLAT(J+1)=BWORK(J)
         ENDDO
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
-          ASLAT(JHE)=0.
-          WLAT(JHE)=2.*WLAT(JHE)
+          ASLAT(JHE)=0.d0
         ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !C  EQUALLY-SPACED LATITUDES EXCLUDING POLES
@@ -2690,32 +2626,16 @@ contains
         JHE=(JMAX+1)/2
         JHO=JHE
         DLT=PI/JMAX
-        ASLAT(1)=1.
+        ASLAT(1)=1.d0
         DO J=1,JH
-          ASLAT(J)=COS((J-0.5)*DLT)
-        ENDDO
-        DO JS=1,JHO
-          DO J=1,JHO
-            AWORK(JS,J)=COS(2*(JS-1)*(J-0.5)*DLT)
-          ENDDO
-        ENDDO
-        DO JS=1,JHO
-          BWORK(JS)=-D1/(4*(JS-1)**2-1)
-        ENDDO
-        CALL DGEF(AWORK,JHE,JHO,IPVT)
-        CALL DGES(AWORK,JHE,JHO,IPVT,BWORK,J0)
-        WLAT(1)=0.
-        DO J=1,JHO
-          WLAT(J)=BWORK(J)
+          ASLAT(J)=COS((J-0.5d0)*DLT)
         ENDDO
 !CDIR$ IVDEP
         DO J=1,JH
           ASLAT(JMAX+1-J)=-ASLAT(J)
-          WLAT(JMAX+1-J)=WLAT(J)
         ENDDO
         IF(JHE.GT.JH) THEN
-          ASLAT(JHE)=0.
-          WLAT(JHE)=2.*WLAT(JHE)
+          ASLAT(JHE)=0.d0
         ENDIF
       ENDIF
 !C - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

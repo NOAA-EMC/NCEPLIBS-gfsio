@@ -10,6 +10,9 @@ module gfsio_module
 !
 ! Program history log
 !    2006-11-10    Jun Wang
+!    2013-01-02    Jun Wang  add precision option in gfsio_writerec routine 
+!    2013-01-03    Jun Wang  add byteswap for little endian machine, gfsio output 
+!                            files will be big endian files
 !
 ! Public Variables
 ! Public Defined Types
@@ -913,6 +916,7 @@ contains
     if(present(idvm)) idvm=gfile%idvm
     if(present(idvt)) idvt=gfile%idvt
     if(present(idrun)) idrun=gfile%idrun
+    if(present(idusr)) idusr=gfile%idusr
     if(present(pdryini)) pdryini=(gfile%pdryini/1.0e5)
     if(present(ncldt)) ncldt=gfile%ncldt
     if(present(ixgr)) ixgr=gfile%ixgr
@@ -1329,7 +1333,7 @@ contains
     if ( present(iret)) iret=0
   end subroutine gfsio_readrecv8
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerecw34(gfile,jrec,data,iret,idrt)
+  subroutine gfsio_writerecw34(gfile,jrec,data,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by record number into a 2D 32bits array, 
 !           using w3_4 library to compile
@@ -1340,10 +1344,12 @@ contains
     real(gfsio_realkind),intent(in)            :: data(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios,w34
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
 !---
     real(gfsio_realkind)      :: max,min
 !------------------------------------------------------------
@@ -1352,9 +1358,9 @@ contains
     if(present(iret)) iret=-4
     w34=1
     if(present(idrt)) then
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,w34=w34,idrt=idrt)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,w34=w34,idrt=idrt,precision=precision)
     else
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,w34=w34)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,w34=w34,precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1377,12 +1383,15 @@ contains
 !------------------------------------------------------------
 ! get data from putgb _w34
 !------------------------------------------------------------
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1392,7 +1401,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerecw34
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerec4(gfile,jrec,data,iret,idrt)
+  subroutine gfsio_writerec4(gfile,jrec,data,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by record number into a 2D 32bits array, 
 !           using w3_d library to compile
@@ -1403,20 +1412,22 @@ contains
     real(gfsio_realkind),intent(in)            :: data(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     real(gfsio_dblekind)        :: data8(gfile%latb*gfile%lonb)
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios
     real(gfsio_intkind)         :: max
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
 !------------------------------------------------------------
 ! set up grib meta 
 !------------------------------------------------------------
     if(present(iret)) iret=-4
     if(present(idrt)) then
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,idrt=idrt)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,idrt=idrt,precision=precision)
     else
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1440,12 +1451,15 @@ contains
 ! get data from putgb _w3d
 !------------------------------------------------------------
     data8=data
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data8,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data8,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1455,7 +1469,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerec4
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerec8(gfile,jrec,data8,iret,idrt)
+  subroutine gfsio_writerec8(gfile,jrec,data8,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by record number into a 2D 64bits array, 
 !           using w3_d library to compile
@@ -1466,10 +1480,12 @@ contains
     real(gfsio_dblekind),intent(in)            :: data8(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
 !---
     real(gfsio_realkind)      :: max,min
 !------------------------------------------------------------
@@ -1477,9 +1493,9 @@ contains
 !------------------------------------------------------------
     if(present(iret)) iret=-4
     if(present(idrt)) then
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,idrt=idrt)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,idrt=idrt,precision=precision)
     else
-      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec)
+      call gfsio_setrqst(gfile,grbmeta,ios,jrec=jrec,precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1502,12 +1518,15 @@ contains
 !------------------------------------------------------------
 ! get data from putgb _w3d
 !------------------------------------------------------------
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data8,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data8,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1517,7 +1536,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerec8
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerecvw34(gfile,vname,vlevtyp,vlev,data,iret,idrt)
+  subroutine gfsio_writerecvw34(gfile,vname,vlevtyp,vlev,data,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by field name into a 2D 32bits array, 
 !           using w3_4 library to compile
@@ -1529,10 +1548,12 @@ contains
     real(gfsio_realkind),intent(in)            :: data(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios,w34
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
     real(gfsio_realkind)        :: max
 !------------------------------------------------------------
 ! set up grib meta 
@@ -1541,10 +1562,10 @@ contains
     w34=1
     if(present(idrt)) then
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev, w34=w34, idrt=idrt)
+        vlevtyp=vlevtyp, vlev=vlev, w34=w34, idrt=idrt,precision=precision)
     else
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev, w34=w34)
+        vlevtyp=vlevtyp, vlev=vlev, w34=w34,precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1567,12 +1588,15 @@ contains
 !------------------------------------------------------------
 ! get data from putgb _w34
 !------------------------------------------------------------
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1582,7 +1606,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerecvw34
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerecv4(gfile,vname,vlevtyp,vlev,data,iret,idrt)
+  subroutine gfsio_writerecv4(gfile,vname,vlevtyp,vlev,data,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by field name into a 2D 32bits array, 
 !           using w3_d library to compile
@@ -1594,11 +1618,13 @@ contains
     real(gfsio_realkind),intent(in)            :: data(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     real(gfsio_dblekind)        :: data8(gfile%latb*gfile%lonb)
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
     real(gfsio_realkind)        :: max
 !------------------------------------------------------------
 ! set up grib meta 
@@ -1606,10 +1632,10 @@ contains
     if(present(iret)) iret=-4
     if(present(idrt)) then
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev, idrt=idrt)
+        vlevtyp=vlevtyp, vlev=vlev, idrt=idrt,precision=precision)
     else
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev)
+        vlevtyp=vlevtyp, vlev=vlev,precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1633,12 +1659,15 @@ contains
 ! get data from putgb _w3d
 !------------------------------------------------------------
     data8=data
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data8,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data8,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1648,7 +1677,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerecv4
 !------------------------------------------------------------------------------
-  subroutine gfsio_writerecv8(gfile,vname,vlevtyp,vlev,data8,iret,idrt)
+  subroutine gfsio_writerecv8(gfile,vname,vlevtyp,vlev,data8,iret,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: read gfsio data by field name into a 2D 64bits array, 
 !           using w3_d library to compile
@@ -1660,10 +1689,12 @@ contains
     real(gfsio_dblekind),intent(in)            :: data8(gfile%latb*gfile%lonb)
     integer(gfsio_intkind),optional,intent(out):: iret
     integer(gfsio_intkind),optional,intent(in) :: idrt
+    integer(gfsio_intkind),optional,intent(in) :: precision
     type(gfsio_grbmeta)         :: grbmeta
     integer(gfsio_intkind)      :: N=gfsio_kpds_intfill
     integer(gfsio_intkind)      :: nc,i
     integer(gfsio_intkind)      :: ios
+    integer(gfsio_intkind)      :: kens(200),ibs,nbits
     real(gfsio_realkind)        :: max
 !------------------------------------------------------------
 ! set up grib meta 
@@ -1671,10 +1702,10 @@ contains
     if(present(iret)) iret=-4
     if(present(idrt)) then
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev, idrt=idrt)
+        vlevtyp=vlevtyp, vlev=vlev, idrt=idrt, precision=precision)
     else
       call gfsio_setrqst(gfile,grbmeta,ios,vname=vname, &
-        vlevtyp=vlevtyp, vlev=vlev)
+        vlevtyp=vlevtyp, vlev=vlev, precision=precision)
     endif
     if (ios.ne.0) then
        if ( present(iret))  then
@@ -1697,12 +1728,15 @@ contains
 !------------------------------------------------------------
 ! get data from putgb _w3d
 !------------------------------------------------------------
-    call putgb(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
-      grbmeta%lbms,data8,ios)
+!call putgben instead of getgb for oytgben has maxbits set to 
+!24, GRADS has issues with number bits >24
+    kens=0;ibs=0;nbits=0
+    call putgben(gfile%flunit,grbmeta%jf,grbmeta%jpds,grbmeta%jgds, &
+      kens,ibs,nbits,grbmeta%lbms,data8,ios)
     deallocate(grbmeta%lbms)
     if(ios.ne.0) then
        if ( present(iret))  then
-          print *,'putgb_ios=',ios
+          print *,'putgben_ios=',ios
          iret=ios
          return
        else
@@ -1712,7 +1746,7 @@ contains
     if(present(iret)) iret=0
   end subroutine gfsio_writerecv8
 !----------------------------------------------------------------------------
-  subroutine gfsio_setrqst(gfile,grbmeta,iret,jrec,vname,vlevtyp,vlev,w34,idrt)
+  subroutine gfsio_setrqst(gfile,grbmeta,iret,jrec,vname,vlevtyp,vlev,w34,idrt,precision)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -- - - - - - - -
 ! abstract: if given record number, find record name, lev typ, and levs or
 !           record name,lev type and lev can be got from argument list.
@@ -1728,6 +1762,7 @@ contains
     integer(gfsio_intkind),intent(out)          :: iret
     integer(gfsio_intkind),optional,intent(in)  :: w34
     integer(gfsio_intkind),optional,intent(in)  :: idrt
+    integer(gfsio_intkind),optional,intent(in)  :: precision
     character(255) :: name,levtyp
     integer :: icen,igrid,iptv,itl,ibms,iftu,ip2,itr,ina,inm,ios
     integer :: i,il1,il2,lev,krec,idrt_in
@@ -1774,6 +1809,9 @@ contains
 !------------------------------------------------------------
 ! for write, need to set up jgds(1:25), jpds(01-20)
 !------------------------------------------------------------
+      if (present(precision)) then
+        gribtable(krec)%precision=precision
+      endif
       if (present(idrt)) then
         idrt_in = idrt
       else
@@ -2273,7 +2311,7 @@ contains
     gribtable(8)=gfsio_grbtbl_item('spfh','layer',7,0,51,109)
     gribtable(9)=gfsio_grbtbl_item('o3mr','layer',9,0,154,109)
     gribtable(10)=gfsio_grbtbl_item('clwmr','layer',7,0,153,109)
-    gribtable(11)=gfsio_grbtbl_item('vvel','layer',9,0,39,109)
+    gribtable(11)=gfsio_grbtbl_item('vvel','layer',6,0,39,109)
     iret=0
   end subroutine gfsio_setgrbtbl
 !------------------------------------------------------------------------------

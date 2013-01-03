@@ -223,6 +223,8 @@ module gfsio_module
 !
 !--- file unit for putgb/getgb ----
   integer(gfsio_intkind),save   :: fileunit(600:699)=0
+  character(16) :: machine_endian
+  logical :: do_byteswap
 !------------------------------------------------------------------------------
 !public mehtods
   public gfsio_init,gfsio_finalize,gfsio_open,gfsio_close
@@ -240,7 +242,7 @@ contains
     integer(gfsio_intkind),optional,intent(out):: iret
     integer :: ios
 !------------------------------------------------------------
-! abstract: set grib table 
+! abstract: set grib table, set do_byteswap
 !------------------------------------------------------------
     call gfsio_setgrbtbl(ios)
     if ( ios.ne.0) then
@@ -252,6 +254,14 @@ contains
        endif
     endif
     if ( present(iret)) iret=0
+!------------------------------------------------------------
+! set byteswap
+!------------------------------------------------------------
+    call chk_endianc(machine_endian)
+    do_byteswap=.false.
+    if(trim(machine_endian)=='little_endian') then
+      do_byteswap=.true.
+    endif
   end subroutine gfsio_init
 !------------------------------------------------------------------------------
   subroutine gfsio_finalize()
@@ -452,6 +462,7 @@ contains
     iread=gfsio_lmeta1
     call bafrread(gfile%flunit,iskip,iread,nread,meta1)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(meta1%version,gfsio_intkind,6)
     gfile%gtype=meta1%gtype
     gfile%version=meta1%version
     gfile%nmeta=meta1%nmeta
@@ -473,6 +484,7 @@ contains
     iread=gfile%lmeta
     call bafrread(gfile%flunit,iskip,iread,nread,meta2)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(meta2%nrec,gfsio_intkind,34)
     gfile%fhour=meta2%fhour
     gfile%idate=meta2%idate
     gfile%nrec=meta2%nrec
@@ -520,6 +532,8 @@ contains
     iread=gfsio_realkind*size(gfile%vcoord)
     call bafrread(gfile%flunit,iskip,iread,nread,gfile%vcoord)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(gfile%vcoord,gfsio_realkind,   &
+      size(gfile%vcoord))
     nmeta=nmeta-1
 !recname
     iskip=iskip+nread
@@ -538,18 +552,24 @@ contains
     iread=gfsio_intkind*size(gfile%reclev)
     call bafrread(gfile%flunit,iskip,iread,nread,gfile%reclev)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(gfile%reclev,gfsio_intkind,    &
+      size(gfile%reclev))
     nmeta=nmeta-1
 !glat
     iskip=iskip+nread
     iread=gfsio_realkind*size(gfile%glat1d)
     call bafrread(gfile%flunit,iskip,iread,nread,gfile%glat1d)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(gfile%glat1d,gfsio_realkind,   &
+      size(gfile%glat1d))
     nmeta=nmeta-1
 !glon
     iskip=iskip+nread
     iread=gfsio_realkind*size(gfile%glon1d)
     call bafrread(gfile%flunit,iskip,iread,nread,gfile%glon1d)
     if(nread.lt.iread) return
+    if(do_byteswap) call byteswap(gfile%glon1d,gfsio_realkind,   &
+      size(gfile%glon1d))
     nmeta=nmeta-1
 !Cpi
     if ( nmeta .gt.0 ) then
@@ -557,12 +577,16 @@ contains
       iread=gfsio_realkind*size(gfile%Cpi)
       call bafrread(gfile%flunit,iskip,iread,nread,gfile%Cpi)
       if(nread.lt.iread) return
+      if(do_byteswap) call byteswap(gfile%cpi,gfsio_realkind,    &
+        size(gfile%cpi))
       nmeta=nmeta-1
 !Ri
       iskip=iskip+nread
       iread=gfsio_realkind*size(gfile%Ri)
       call bafrread(gfile%flunit,iskip,iread,nread,gfile%Ri)
       if(nread.lt.iread) return
+      if(do_byteswap) call byteswap(gfile%ri,gfsio_realkind,     &
+        size(gfile%ri))
       nmeta=nmeta-1
     else
      gfile%Cpi=1003.
@@ -768,6 +792,7 @@ contains
     meta1%reserve=0
     iskip=0
     iwrite=gfsio_lmeta1
+    if(do_byteswap) call byteswap(meta1%version,gfsio_intkind,6)
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,meta1)
     if(nwrite.lt.iwrite) return
 !------------------------------------------------------------
@@ -805,6 +830,7 @@ contains
     meta2%idrt=gfile%idrt
     iskip=iskip+nwrite
     iwrite=gfile%lmeta
+    if(do_byteswap) call byteswap(meta2%nrec,gfsio_intkind,34)
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,meta2)
     if(nwrite.lt.iwrite) return
 !------------------------------------------------------------
@@ -813,8 +839,12 @@ contains
 !vcoord
     iskip=iskip+nwrite
     iwrite=gfsio_realkind*size(gfile%vcoord)
+    if(do_byteswap) call byteswap(gfile%vcoord,gfsio_realkind,       &
+      size(gfile%vcoord))
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%vcoord)
     if(nwrite.lt.iwrite) return
+    if(do_byteswap) call byteswap(gfile%vcoord,gfsio_realkind,       &
+      size(gfile%vcoord))
 !recname
     iskip=iskip+nwrite
     iwrite=gfsio_charkind*size(gfile%recname)
@@ -828,29 +858,49 @@ contains
 !reclev
     iskip=iskip+nwrite
     iwrite=gfsio_intkind*size(gfile%reclev)
+    if(do_byteswap) call byteswap(gfile%reclev,gfsio_intkind,        &
+      size(gfile%reclev))
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%reclev)
     if(nwrite.lt.iwrite) return
+    if(do_byteswap) call byteswap(gfile%reclev,gfsio_intkind,        &
+      size(gfile%reclev))
 !glat
     iskip=iskip+nwrite
     iwrite=gfsio_realkind*size(gfile%glat1d)
+    if(do_byteswap) call byteswap(gfile%glat1d,gfsio_realkind,       &
+      size(gfile%glat1d))
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%glat1d)
     if(nwrite.lt.iwrite) return
+    if(do_byteswap) call byteswap(gfile%glat1d,gfsio_realkind,       &
+      size(gfile%glat1d))
 !glon
     iskip=iskip+nwrite
     iwrite=gfsio_realkind*size(gfile%glon1d)
+    if(do_byteswap) call byteswap(gfile%glon1d,gfsio_realkind,       &
+      size(gfile%glon1d))
     call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%glon1d)
     if(nwrite.lt.iwrite) return
+    if(do_byteswap) call byteswap(gfile%glon1d,gfsio_realkind,       &
+      size(gfile%glon1d))
 !
 !Cpi
       iskip=iskip+nwrite
       iwrite=gfsio_realkind*size(gfile%Cpi)
+      if(do_byteswap) call byteswap(gfile%cpi,gfsio_realkind,        &
+        size(gfile%cpi))
       call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%Cpi)
       if(nwrite.lt.iwrite) return
+      if(do_byteswap) call byteswap(gfile%cpi,gfsio_realkind,        &
+        size(gfile%cpi))
 !Ri
       iskip=iskip+nwrite
       iwrite=gfsio_realkind*size(gfile%Ri)
+      if(do_byteswap) call byteswap(gfile%ri,gfsio_realkind,         &
+        size(gfile%ri))
       call bafrwrite(gfile%flunit,iskip,iwrite,nwrite,gfile%Ri)
       if(nwrite.lt.iwrite) return
+      if(do_byteswap) call byteswap(gfile%ri,gfsio_realkind,         &
+        size(gfile%ri))
 !
     iret=0
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

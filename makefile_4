@@ -1,8 +1,7 @@
-LIB     = ../../libgfsio_4.a
-INCMOD  = ../../incmod/gfsio_4
-FC      = $(FCS)
+LIB     = ../../libgfsio_v1.1.0_4.a
+INCMOD  = ../../incmod/gfsio_v1.1.0_4
+FC      = $(FCMP)
 FFLAGS  = -traceback -g -xHOST -convert big_endian -assume byterecl  -I$(INCMOD) -FR
-#FFLAGS = -g -C -qextchk -qflttrap -qnosave -O3 -q free=f90 -I$(INCMOD)
 AR      = ar
 ARFLAGS = -rv 
 
@@ -11,5 +10,6 @@ $(LIB): $(LIB)(gfsio_module.o)
 	$(FC) -c $(FFLAGS) $<
 	$(AR) $(ARFLAGS) $@ $*.o
 	rm -f $*.o
+	mkdir -p $(INCMOD)
 	mv $*.mod $(INCMOD)
 

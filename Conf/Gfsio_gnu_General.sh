@@ -1,7 +1,11 @@
 # *** manually set environments (for gnu compiler) of gfsio ***
 
-# !!! module environment (*THEIA*) !!!
-#module load gcc/6.2.0   # use default GCC comiler for compatible to w3emc
+ : ${USERMODE:=false}  # user mode (USERMODE) is closed by default
+                       # set env var USERMODE to "true" to active it
+ ${USERMODE} && {
+    echo "Environment set by user"
+    echo "Use default GCC compiler for compatible to w3emc"
+ }
 
  ANCHORDIR=..
  export COMP=gnu

@@ -1,0 +1,56 @@
+cmake_minimum_required(VERSION 2.6)
+project(gfsio)
+set(VERSION v1.1.0)
+enable_language (Fortran)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE RELEASE CACHE STRING
+        "Choose the type of build, options are: PRODUCTION Debug Release."
+        FORCE)
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+  message("setting intel true")
+  set(IntelComp true )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU*")
+  set(GNUComp true )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "pgc*")
+  set(PGIComp true )
+endif()
+MESSAGE(${CMAKE_CURRENT_SOURCE_DIR})
+STRING(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "RelWithDebInfo" BUILD_RELEASE)
+if(NOT BUILD_RELEASE)
+  STRING(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "RELEASE" BUILD_RELEASE)
+endif()
+STRING(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "PRODUCTION" BUILD_PRODUCTION)
+STRING(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "DEGUG" BUILD_DEBUG)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+find_package( Jasper )
+find_package( PNG )
+find_package( ZLIB )
+
+if( (BUILD_RELEASE) OR (BUILD_PRODUCTION) )
+  if(IntelComp)
+    message("setting intel flags")
+    set(CMAKE_Fortran_FLAGS "-free -traceback -g -xHOST -convert big_endian -assume byterecl " CACHE INTERNAL "" )
+  else()
+    message("unkown compiler!")
+    exit()
+  endif()
+endif()
+set(LIBNAME ${CMAKE_PROJECT_NAME}_${VERSION}_4)
+file(GLOB LIB_4_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.f)
+include_directories( ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS} ${JASPER_INCLUDE_DIR})
+add_definitions( ${CMAKE_Fortran_4_FLAGS} )
+add_library(${LIBNAME} STATIC ${LIB_4_SRC}  )
+set(CMAKE_INCLUDE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include_4")
+set_target_properties(${LIBNAME} PROPERTIES Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include_4")
+target_include_directories(${LIBNAME} PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/include_4")
+
+file(MAKE_DIRECTORY ${CMAKE_INCLUDE_OUTPUT_DIRECTORY})
+
+install(TARGETS ${LIBNAME}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib) 
+install(DIRECTORY ${CMAKE_INCLUDE_OUTPUT_DIRECTORY}/ DESTINATION include_4 )
+

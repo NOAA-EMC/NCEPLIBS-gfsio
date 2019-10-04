@@ -1,18 +1,12 @@
-# *** manually set environments (for gnu compiler) of gfsio ***
+# *** manually set environments (for gnu compiler) of sfcio ***
 
  : ${USERMODE:=false}  # user mode (USERMODE) is closed by default
                        # set env var USERMODE to "true" to active it
  ${USERMODE} && {
     echo "Environment set by user"
-    echo "Use default GCC compiler for compatible to w3emc"
+# On theia/cray, user can load environment
+    module load gcc/6.2.0
  }
-
- ANCHORDIR=..
- export COMP=gnu
- export GFSIO_VER=v1.1.0
- export GFSIO_SRC=
- export GFSIO_INC4=$ANCHORDIR/include/gfsio_${GFSIO_VER}_4
- export GFSIO_LIB4=$ANCHORDIR/libgfsio_${GFSIO_VER}_4.a
 
  export CC=gcc
  export FC=gfortran
@@ -20,7 +14,7 @@
  export OMPCC="$CC -fopenmp"
  export OMPFC="$FC -fopenmp"
  export MPICC=mpigcc
- export MPIFC=mpigfortran
+ export MPIFC=mpif90
 
  export DEBUG="-g -fbacktrace -O0"
  export CFLAGS="-g -O3 -fPIC"

@@ -28,7 +28,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 if( (BUILD_RELEASE) OR (BUILD_PRODUCTION) )
   if(IntelComp)
-    set(fortran_flags "-free" "-traceback" "-g" "-xHOST" "-convert big_endian" "-assume byterecl")
+    set(fortran_flags "-free" "-traceback" "-g" "-xHOST" "-convert" "big_endian" "-assume" "byterecl")
   elseif(GNUComp)
     set(fortran_flags "-ffree-form" "-fbacktrace" "-g" "-O2" "-fconvert=big-endian")
   else()

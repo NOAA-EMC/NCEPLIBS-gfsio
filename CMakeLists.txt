@@ -10,7 +10,6 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  message("setting intel true")
   set(IntelComp true )
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU*" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang*")
   set(GNUComp true )

@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
 
+file(STRINGS "VERSION" pVersion)
+
 project(
   gfsio
-  VERSION 1.1.0
+  VERSION ${pVersion}
   LANGUAGES Fortran)
 
 if(NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)$")
@@ -23,7 +25,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
   set(CMAKE_Fortran_FLAGS
       "-g -traceback -free -xHOST -convert big_endian -assume byterecl")
 elseif(CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
-  set(CMAKE_Fortran_FLAGS "-fconvert=big-endian -ffree-form -fbacktrace -g")
+  set(CMAKE_Fortran_FLAGS "-g -fbacktrace -fconvert=big-endian -ffree-form")
   set(CMAKE_Fortran_RELEASE "-O2")
 endif()
 

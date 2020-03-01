@@ -1,11 +1,11 @@
 # GFSIO
 
-Performs something for the NCEP models.
+ API to convert GFS Gaussian output into grib output
 
 
 ### Prerequisites
 
-Compilers: GNU | Intel | Clang | AppleClang | PGI
+Compilers: GNU | Intel | Clang | AppleClang 
 
 
 ### Installing
@@ -20,7 +20,7 @@ make install
 
 
 ### Version
-1.1.0
+1.2.0
 
 
 ### Authors

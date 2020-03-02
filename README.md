@@ -2,6 +2,7 @@
 
  API to convert GFS Gaussian output into grib output
 
+Code Manager: George Vandenberghe
 
 ### Prerequisites
 

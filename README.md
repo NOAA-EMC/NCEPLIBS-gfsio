@@ -1,11 +1,12 @@
 # GFSIO
 
-Performs something for the NCEP models.
+ API to convert GFS Gaussian output into grib output
 
+Code Manager: George Vandenberghe
 
 ### Prerequisites
 
-Compilers: GNU | Intel | Clang | AppleClang | PGI
+Compilers: GNU | Intel | Clang | AppleClang 
 
 
 ### Installing
@@ -20,9 +21,9 @@ make install
 
 
 ### Version
-1.1.0
+1.2.0
 
 
 ### Authors
 
-* **[NCEP/EMC](NCEP.List.EMC.nceplibs.Developers@noaa.gov)**
+* **[NCEP/EMC](mailto:NCEP.List.EMC.nceplibs.Developers@noaa.gov)**

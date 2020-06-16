@@ -13,7 +13,6 @@ set(lib_name ${PROJECT_NAME})
 set(module_dir ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_library(${lib_name} STATIC ${fortran_src})
-# alias to create a target with the same name as namespace
 add_library(${PROJECT_NAME}::${lib_name} ALIAS ${lib_name})
 
 set_target_properties(${lib_name} PROPERTIES Fortran_MODULE_DIRECTORY ${module_dir})

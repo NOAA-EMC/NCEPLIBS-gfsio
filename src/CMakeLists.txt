@@ -1,10 +1,14 @@
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
   set(CMAKE_Fortran_FLAGS
-      "-g -traceback -free -xHOST -convert big_endian -assume byterecl")
-elseif(CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
-  set(CMAKE_Fortran_FLAGS "-g -fbacktrace -fconvert=big-endian -ffree-form")
+      "-g -traceback -free -convert big_endian -assume byterecl ${CMAKE_Fortran_FLAGS}")
+elseif(CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU)$")
+  set(CMAKE_Fortran_FLAGS "-g -fbacktrace -fconvert=big-endian -ffree-form ${CMAKE_Fortran_FLAGS}")
   set(CMAKE_Fortran_RELEASE "-O2")
+endif()
+
+if(${CMAKE_Fortran_COMPILER_ID} MATCHES "^(GNU)$" AND ${CMAKE_Fortran_COMPILER_VERSION} VERSION_GREATER_EQUAL 10)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -w -fallow-argument-mismatch -fallow-invalid-boz")
 endif()
 
 set(fortran_src gfsio_module.f)

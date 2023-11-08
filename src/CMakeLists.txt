@@ -1,5 +1,4 @@
-
-if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
+if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel|IntelLLVM)$")
   set(CMAKE_Fortran_FLAGS
       "-g -traceback -free -convert big_endian -assume byterecl ${CMAKE_Fortran_FLAGS}")
 elseif(CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU)$")

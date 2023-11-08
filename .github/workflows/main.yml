@@ -21,7 +21,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/pfunit
-        key: pfunit-${{ runner.os }}-${{ hashFiles('pfunit/VERSION') }}
+        key: pfunit-${{ runner.os }}-${{ hashFiles('pfunit/VERSION') }}-gcc
 
     - name: build-pfunit
       if: steps.cache-pfunit.outputs.cache-hit != 'true'

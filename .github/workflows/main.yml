@@ -3,12 +3,20 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    env:
-      FC: gfortran
-      CC: gcc
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        gcc-version: [12,14]
 
     steps:
+
+    - name: get-gcc
+      run: |
+        if [ -z $(type -P gcc-${{ matrix.gcc-version }}) ]; then
+          sudo apt-get install gcc-${{ matrix.gcc-version }}
+        fi
+        echo "CC=gcc-${{ matrix.gcc-version }}" >> $GITHUB_ENV
+        echo "FC=gfortran-${{ matrix.gcc-version }}" >> $GITHUB_ENV
 
     - name: checkout-pfunit
       uses: actions/checkout@v4
@@ -21,7 +29,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/pfunit
-        key: pfunit-${{ runner.os }}-gcc-1
+        key: pfunit-${{ runner.os }}-gcc${{ matrix.gcc-version }}-1
 
     - name: build-pfunit
       if: steps.cache-pfunit.outputs.cache-hit != 'true'

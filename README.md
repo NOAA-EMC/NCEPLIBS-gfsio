@@ -23,6 +23,8 @@ make -j2
 make install
 ```
 
+NCEPLIBS-gfsio is also available through [Spack](https://spack.io) as '[gfsio](https://github.com/spack/spack/tree/develop/var/spack/repos/builtin/packages/gfsio)'.
+
 ## Disclaimer
 
 The United States Department of Commerce (DOC) GitHub project code is

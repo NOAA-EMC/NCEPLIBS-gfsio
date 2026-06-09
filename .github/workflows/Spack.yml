@@ -25,28 +25,16 @@ jobs:
 
     steps:
     
-    - name: checkout-gfsio
-      uses: actions/checkout@v4
-      with: 
-        path: gfsio
-
-    - name: spack-build-and-test
-      run: |
-        git clone -c feature.manyFiles=true https://github.com/jcsda/spack
-        . spack/share/spack/setup-env.sh
-        spack env create gfsio-env
-        spack env activate gfsio-env
-        cp $GITHUB_WORKSPACE/gfsio/spack/package.py $SPACK_ROOT/var/spack/repos/builtin/packages/gfsio/package.py
-        spack develop --no-clone --path $GITHUB_WORKSPACE/gfsio gfsio@develop
-        spack add gfsio@develop%gcc@11 +pfunit
-        spack external find cmake gmake m4 python
-        spack concretize
-        # Run installation and run pFunit testing
-        spack install --verbose --fail-fast --test root
-        # Run 'spack load' to check for obvious errors in setup_run_environment
-        spack load gfsio
-        ls $GFSIO_LIB
-        ls $GFSIO_LIB4
+    - name: "Build Spack package"
+      uses: NOAA-EMC/ci-test-spack-package@develop
+      with:
+        package-name: gfsio
+        package-variants: +pfunit
+        custom-recipe: spack/package.py
+        use-repo-cache: true
+        spack-compiler: gcc
+        spack-externals: cmake gmake perl python
+        repo-cache-key-suffix: ${{ matrix.os }}-1
 
   # This job validates the Spack recipe by making sure each cmake build option is represented
   recipe-check:
@@ -54,15 +42,8 @@ jobs:
 
     steps:
     
-    - name: checkout-gfsio
-      uses: actions/checkout@v4
-      with: 
-        path: gfsio
-
     - name: recipe-check
-      run: |
-        echo "If this jobs fails, look at the most recently output CMake option below and make sure that option appears in spack/package.py"
-        for opt in $(grep -ioP '^option\(\K(?!(DUMMY_ENTRY))[^ ]+' $GITHUB_WORKSPACE/gfsio/CMakeLists.txt) ; do
-          echo "Checking for presence of '$opt' CMake option in package.py"
-          grep -cP "define.+\b${opt}\b" $GITHUB_WORKSPACE/gfsio/spack/package.py
-        done
+      uses: NOAA-EMC/ci-check-spack-recipe@develop
+      with:
+        recipe-file: package/spack/package.py
+        cmakelists-txt: package/CMakeLists.txt

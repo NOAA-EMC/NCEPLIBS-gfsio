@@ -3,51 +3,49 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    env:
-      FC: gfortran-9
-      CC: gcc-9
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        gcc-version: [12,14]
 
     steps:
 
+    - name: get-gcc
+      run: |
+        if [ -z $(type -P gcc-${{ matrix.gcc-version }}) ]; then
+          sudo apt-get install gcc-${{ matrix.gcc-version }}
+        fi
+        echo "CC=gcc-${{ matrix.gcc-version }}" >> $GITHUB_ENV
+        echo "FC=gfortran-${{ matrix.gcc-version }}" >> $GITHUB_ENV
+
     - name: checkout-pfunit
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: Goddard-Fortran-Ecosystem/pFUnit
         path: pfunit
 
     - name: cache-pfunit
       id: cache-pfunit
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/pfunit
-        key: pfunit-${{ runner.os }}-gcc
+        key: pfunit-${{ runner.os }}-gcc${{ matrix.gcc-version }}-1
 
     - name: build-pfunit
       if: steps.cache-pfunit.outputs.cache-hit != 'true'
       run: |
-        cd pfunit
-        mkdir build
-        cd build
-        cmake .. -DSKIP_MPI=YES -DSKIP_ESMF=YES -DSKIP_FHAMCREST=YES -DCMAKE_INSTALL_PREFIX=~/pfunit
-        make -j2
-        make install
+        cmake -B pfunit/build -S pfunit -DSKIP_MPI=YES -DSKIP_ESMF=YES -DSKIP_FHAMCREST=YES -DCMAKE_INSTALL_PREFIX=~/pfunit
+        cmake --build pfunit/build --verbose
+        cmake --install pfunit/build
 
     - name: checkout
-      uses: actions/checkout@v2
-      with: 
-        path: gfsio
-        submodules: true
+      uses: actions/checkout@v4
 
     - name: build
       run: |
-        cd gfsio
-        mkdir build 
-        cd build
-        cmake .. -DENABLE_TESTS=ON -DCMAKE_PREFIX_PATH="~/pfunit;~/"
-        make -j2
+        cmake -B build -DENABLE_TESTS=ON -DCMAKE_PREFIX_PATH="~/pfunit"
+        cmake --build build --parallel 2 --verbose
     
     - name: test
       run: |
-        cd $GITHUB_WORKSPACE/gfsio/build
-        make test
+        cmake --build build --target test --verbose

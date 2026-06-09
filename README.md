@@ -2,6 +2,8 @@
 
 # GFSIO
 
+This code is deprecated and should be removed from operational use.
+
 API to convert GFS Gaussian output into grib output. This is part of
 the [NCEPLIBS](https://github.com/NOAA-EMC/NCEPLIBS) project.
 
